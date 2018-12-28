@@ -1,5 +1,5 @@
-from evolutionary_algorithms.Individual import *
-import numerical_optimisation_benchmarks.numb as nb
+from EA.Individual import *
+import NO.numb as nb
 
 class Population(object):
 

@@ -1,7 +1,7 @@
 import numpy as np
 from math import *
-from evolutionary_algorithms.Population import *
-from evolutionary_algorithms.Individual import *
+from EA.Population import *
+from EA.Individual import *
 
 
 class GeneticAlgorithm(object):

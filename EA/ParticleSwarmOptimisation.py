@@ -1,4 +1,4 @@
-from evolutionary_algorithms.Population import *
+from EA.Population import *
 from math import *
 
 class ParticleSwarmOptimisation(object):
