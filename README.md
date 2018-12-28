@@ -1,2 +1,2 @@
 # NOBEA
-Evolutionary Algorithms by Evolutionary Algorithms - Final Year Project
+Numerical Optimisation by Evolutionary Algorithms - Final Year Project
