@@ -2,6 +2,7 @@ import numpy as np
 from math import *
 from EA.Population import *
 from EA.Individual import *
+import NO.comparativeBenchmarks as cb
 
 
 class GeneticAlgorithm(object):
@@ -9,17 +10,39 @@ class GeneticAlgorithm(object):
     def __init__(self, generations=100, crossover=0.8, mutate=0.01):
         """
 
-        :param precision: int amount of digits after the decimal point
-        :param population_size: int amount of individuals in population
-        :param domain: list containing low and high boundary of search space
-        :param generations: int amount of iterations the algorithm will run
-        :param crossover: float probability of crossover
-        :param mutate: probability of mutation
-        :param genes: amount of genes in an individuals chromosome
+
+        :param generations:
+        :param crossover:
+        :param mutate:
         """
-        self.generations = generations
-        self.crossover = crossover
-        self.mutate = mutate
+        self._generations = generations
+        self._crossover = crossover
+        self._mutate = mutate
+        self._population = None
+
+    @property
+    def generations(self):
+        return self._generations
+
+    @generations.setter
+    def generations(self, generations):
+        self._generations = generations
+
+    @property
+    def crossover(self):
+        return self._crossover
+
+    @crossover.setter
+    def population(self, crossover):
+        self._crossover = crossover
+
+    @property
+    def mutate(self):
+        return self._mutate
+
+    @mutate.setter
+    def mutate(self, mutate):
+        self._mutate = mutate
 
     @property
     def population(self):
@@ -29,15 +52,15 @@ class GeneticAlgorithm(object):
     def population(self, population):
         self._population = population
 
-    def best_selection(self, weighted_population):
+    """def best_selection(self, weighted_population):
         amount_of_copies = round((1 - self.crossover) * self.population.size)
-        return weighted_population[0:amount_of_copies]
+        return weighted_population[0:amount_of_copies]"""
 
     def roulette_wheel_selection(self, weighted_population):
         """
-        Select which individuals to be copied to the next generation
-        using roulette wheel selection. Probability of selection is equal
-        to relative fitness.
+        Select which individuals to be copied to the next generation using roulette wheel selection.
+        Probability of selection is equal to relative fitness.
+
         :return: list of individuals to be added to next generation
         """
         amount_of_copies = round((1 - self.crossover) * self.population.size)
@@ -83,7 +106,7 @@ class GeneticAlgorithm(object):
             for i in range(self.population.size):
                 selected -= probabilities[i]
                 if selected <= 0:
-                    chosen += [self.population.agents[i]]
+                    chosen += [self.population.individuals[i]]
                     break
         return chosen
 
@@ -116,18 +139,19 @@ class GeneticAlgorithm(object):
     def real_crossover(self, parent1, parent2):
         offspring = []
         for _ in range(2):
-            ind = Individual()
+            ind = Individual(self.population.genes, self.population.precision, self.population.domain)
             for gene in range(self.population.genes):
-                ind.chromosome += [round(random.uniform(min(parent1.chromosome[gene], parent2.chromosome[gene]),
-                                                        max(parent1.chromosome[gene], parent2.chromosome[gene])),
-                                         self.population.precision)]
+                ind.chromosome[gene] = round(random.uniform(min(parent1.chromosome[gene], parent2.chromosome[gene]),
+                                                            max(parent1.chromosome[gene], parent2.chromosome[gene])
+                                                            ), self.population.precision)
                 ind.fitness = self.population.get_fitness(ind)
             offspring += [ind]
         return offspring
 
     def run(self):
         """
-        Run the Genetic Algorithm
+        Run the Genetic Algorithm.
+
         :return:
         """
         #Rank selection only works with sorted population
@@ -141,13 +165,13 @@ class GeneticAlgorithm(object):
             # Mutate
             self.ga_mutate(new_population)
             # Evaluate fitness of individuals
-            self.population.agents = new_population
-            self.population.set_fitness()
+            self.population.individuals = new_population
+            self.population.set_population_fitness()
             self.population.sort_by_fitness()
-            print(self.population.best_fitness())
+        print("Genetic Algorithm Best: ", self.population.best_individual)
 
 
 if __name__ == "__main__":
     ga = GeneticAlgorithm(generations=100, crossover=0.8, mutate=0.01)
-    ga.population = Population(size=100, genes=3, precision=6, domain=[0, pi])
+    ga.population = Population(size=100, genes=2, precision=6, domain=[-50, 50], fitness_function=cb.f13)
     ga.run()

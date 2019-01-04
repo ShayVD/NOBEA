@@ -1,25 +1,47 @@
 from EA.Individual import *
+from math import pi
 import NO.numb as nb
+
 
 class Population(object):
 
-    def __init__(self, size, genes, precision, domain):
-        self._agents = []
-        self._best_global_solution = None
+    def __init__(self, size=100, genes=3, precision=6, domain=[0, pi], fitness_function=nb.multi_michalewicz):
+        """
+        Creates a population of 'size' individuals, with 'genes' genes up to a precision of 'precision',
+        in the domain 'domain[0]' to 'domain[1]'.
+        Fitness of each individual is calculated using 'fitness_function'.
+        Individual with lowest fitness score (min) becomes best individual (global).
+
+        :param size:            int, amount of individuals in the population
+        :param genes:           int, amount of genes of each individual
+        :param precision:       int, amount of digits after the decimal point the genes must be accurate to
+        :param domain:          [number, number], list containing lower and higher boundary of domain
+        :param fitness_function:function, used to calculate fitness of individuals
+        """
+        self._individuals = [None] * size
+        self._best_individual = None
         self._size = size
         self._genes = genes
         self._precision = precision
         self._domain = domain
-        self._fitness = nb.multi_michalewicz
+        self._fitness_function = fitness_function
         self.initial_population()
 
     @property
-    def agents(self):
-        return self._agents
+    def individuals(self):
+        return self._individuals
 
-    @agents.setter
-    def agents(self, agents):
-        self._agents = agents
+    @individuals.setter
+    def individuals(self, individuals):
+        self._individuals = individuals
+
+    @property
+    def best_individual(self):
+        return self._best_individual
+
+    @best_individual.setter
+    def best_individual(self, best_individual):
+        self._best_individual = best_individual
 
     @property
     def size(self):
@@ -38,14 +60,6 @@ class Population(object):
         self._genes = genes
 
     @property
-    def best_global_solution(self):
-        return self._best_global_solution
-
-    @best_global_solution.setter
-    def best_global_solution(self, best_solution):
-        self._best_global_solution = best_solution
-
-    @property
     def precision(self):
         return self._precision
 
@@ -62,53 +76,50 @@ class Population(object):
         self._domain = domain
 
     def initial_population(self):
+        """
+        Call during '__init__'.
+        Create Individuals.
+        Set fitness' of Individuals.
+        Update best individual of population, if needed.
+        """
         for i in range(self.size):
-            ind = Individual()
-            ind.initial_chromosome(self.genes, self.precision, self.domain)
-            ind.fitness = self.get_fitness(ind)
-            self.agents += [ind]
+            ind = Individual(self.genes, self.precision, self.domain)
+            ind.set_fitness(self.get_fitness(ind))
+            if self.best_individual is None or ind.fitness < self.best_individual.fitness:
+                self.best_individual = ind
+            self.individuals[i] = ind
 
-    def set_fitness(self):
-        for ind in self.agents:
-            ind.fitness = self.get_fitness(ind)
+    def set_population_fitness(self):
+        """
+        Get and then set fitness of every individual in the population.
+        Update best individual of population, if needed.
+        """
+        for ind in self.individuals:
+            fitness = self.get_fitness(ind)
+            ind.set_fitness(fitness)
+            if ind.fitness < self.best_individual.fitness:
+                self.best_individual = ind
 
     def get_fitness(self, individual):
-        return round(self._fitness(individual.chromosome), self.precision)
+        """
+        Get fitness of 'individual' using the fitness function.
 
-    def set_best_positions(self):
-        for ind in self.agents:
-            ind.best_position = ind.chromosome
-
-    def set_best_global_solution(self):
-        for ind in self.agents:
-            if self._best_global_solution is None or \
-                    ind.fitness < self._best_global_solution.fitness:
-                self._best_global_solution = ind
-
-    def set_initial_velocity(self):
-        for ind in self.agents:
-            ind.initial_velocity(self.genes, self.precision, self.domain)
-
-    def set_initial_fitness(self):
-        for ind in self.agents:
-            ind.fitness = self.get_fitness(ind)
-            ind.best_fitness = ind.fitness
+        :param individual: Individual object
+        :return: float, fitness score
+        """
+        return round(self._fitness_function(individual.chromosome), self.precision)
 
     def sort_by_fitness(self):
-        sorted = self.agents.copy()
-        sorted.sort(key=lambda i: i.fitness)
-        self.agents = sorted
-
-    def best_fitness(self):
-        best = None
-        for ind in self.agents:
-            if best is None or ind.fitness < best.fitness:
-                best = ind
-        return best
+        """
+        Sort individuals in population by fitness, from lowest to highest.
+        """
+        sorted_individuals = self.individuals.copy()
+        sorted_individuals.sort(key=lambda i: i.fitness)
+        self.individuals = sorted_individuals
 
     def __str__(self):
         str = "[->"
-        for ind in self.agents:
+        for ind in self.individuals:
             str += ind.__str__()
             str += ", ->"
         str += "]"
