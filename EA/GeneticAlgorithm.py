@@ -33,7 +33,7 @@ class GeneticAlgorithm(object):
         return self._crossover
 
     @crossover.setter
-    def population(self, crossover):
+    def crossover(self, crossover):
         self._crossover = crossover
 
     @property
@@ -154,7 +154,7 @@ class GeneticAlgorithm(object):
 
         :return:
         """
-        #Rank selection only works with sorted population
+        # Rank selection only works with sorted population
         self.population.sort_by_fitness()
         for generation in range(self.generations):
             new_population = []
