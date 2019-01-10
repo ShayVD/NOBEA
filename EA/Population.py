@@ -75,6 +75,10 @@ class Population(object):
     def domain(self, domain):
         self._domain = domain
 
+    @property
+    def fitness_function(self):
+        return self._fitness_function
+
     def initial_population(self):
         """
         Call during '__init__'.
@@ -88,6 +92,9 @@ class Population(object):
             if self.best_individual is None or ind.fitness < self.best_individual.fitness:
                 self.best_individual = ind
             self.individuals[i] = ind
+
+    def create_individual(self):
+        return Individual(self.genes, self.precision, self.domain)
 
     def set_population_fitness(self):
         """
@@ -108,6 +115,9 @@ class Population(object):
         :return: float, fitness score
         """
         return round(self._fitness_function(individual.chromosome), self.precision)
+
+    def destroy_population(self):
+        self.individuals = [None] * self.size
 
     def sort_by_fitness(self):
         """
