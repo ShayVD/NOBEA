@@ -79,6 +79,9 @@ class Population(object):
     def fitness_function(self):
         return self._fitness_function
 
+    def reset(self):
+        self.__init__(self.size, self.genes, self.precision, self.domain, self.fitness_function)
+
     def initial_population(self):
         """
         Call during '__init__'.
@@ -88,9 +91,7 @@ class Population(object):
         """
         for i in range(self.size):
             ind = Individual(self.genes, self.precision, self.domain)
-            ind.set_fitness(self.get_fitness(ind))
-            if self.best_individual is None or ind.fitness < self.best_individual.fitness:
-                self.best_individual = ind
+            self.set_individual_fitness(ind)
             self.individuals[i] = ind
 
     def create_individual(self):
@@ -102,10 +103,15 @@ class Population(object):
         Update best individual of population, if needed.
         """
         for ind in self.individuals:
-            fitness = self.get_fitness(ind)
-            ind.set_fitness(fitness)
-            if ind.fitness < self.best_individual.fitness:
-                self.best_individual = ind
+            self.set_individual_fitness(ind)
+
+    def set_individual_fitness(self, individual):
+        individual.fitness = self.get_fitness(individual)
+        if individual.best_fitness is None or individual.fitness < individual.best_fitness:
+            individual.best_fitness = individual.fitness
+            individual.best_chromosome = individual.chromosome
+        if self.best_individual is None or individual.fitness < self.best_individual.fitness:
+            self.best_individual = individual
 
     def get_fitness(self, individual):
         """
@@ -114,7 +120,7 @@ class Population(object):
         :param individual: Individual object
         :return: float, fitness score
         """
-        return round(self._fitness_function(individual.chromosome), self.precision)
+        return self._fitness_function(individual.chromosome)
 
     def destroy_population(self):
         self.individuals = [None] * self.size

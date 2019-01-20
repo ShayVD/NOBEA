@@ -89,18 +89,18 @@ class Individual(object):
         for i in range(genes):
             self.velocity[i] = round(random.uniform(-abs(domain[1] - domain[0]), abs(domain[1] - domain[0])), precision)
 
-    def set_fitness(self, fitness):
-        """
+    """def set_fitness(self, fitness):
+        ""
         Set fitness of individual with given value. If best fitness variable is not set, or given fitness is better
         (lower) then set best fitness to the new value.
 
         :param fitness: float, fitness of the individual with regards to some fitness function
         :return:
-        """
+        ""
         self.fitness = fitness
         if self.best_fitness is None or fitness < self.best_fitness:
             self.best_fitness = fitness
-            self.best_chromosome = self.chromosome
+            self.best_chromosome = self.chromosome"""
 
     def __eq__(self, other):
         n = len(self.chromosome)

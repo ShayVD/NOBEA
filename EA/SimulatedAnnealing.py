@@ -16,7 +16,7 @@ For k = 0 through kMax(exclusive):
 Output: final state s
 """
 import numpy as np
-import NO.comparativeBenchmarks as cb
+import NO.ComparativeBenchmarks as cb
 from EA.Population import Population
 
 
@@ -51,13 +51,14 @@ class SimulatedAnnealing(object):
         :return:
         """
         state = self.population.create_individual()
-        state.set_fitness(self.energy(state.chromosome))
+        self.population.set_individual_fitness(state)
         for step in range(self.max_steps):
             fraction = step / float(self.max_steps)
             T = self.temperature(fraction)
             new_state = self.population.create_individual()
             new_state.chromosome = self.neighbour(state.chromosome)
-            new_state.set_fitness(self.energy(new_state.chromosome))
+            self.population.set_individual_fitness(new_state)
+            # new_state.set_fitness(self.energy(new_state.chromosome))
             if self.acceptance_probability(state.fitness, new_state.fitness, T) > np.random.random():
                 state = new_state
             if print_steps:

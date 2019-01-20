@@ -1,24 +1,32 @@
-import numpy as np
-from math import *
-from EA.Population import *
-from EA.Individual import *
-import NO.comparativeBenchmarks as cb
+import numpy.random as random
+from EA.Population import Population
+from NO.ComparativeBenchmarks import ComparativeBenchmarks
 
 
 class GeneticAlgorithm(object):
+    """
+    GA is a meta-heuristic inspired by the process of natural selection.
+    Relies on bio-inspired operators such as mutation, crossover, and selection.
+    A population of candidate solutions, individuals, to an optimisation problem is evolved toward better solutions.
+    Each individual has a set of properties, chromosomes, which can be mutated and altered.
+    Evolution starts with a population of randomly generated individuals.
+    In each generation the fitness of each individual is calculated using the fitness function.
+    When a satisfactory solution is found to the fitness function, or max generations is reached, the algorithm stops.
+    """
 
-    def __init__(self, generations=100, crossover=0.8, mutate=0.01):
+    def __init__(self, generations=100, crossovers=0.8, mutations=0.01, population=None):
         """
+        Set class attributes.
 
-
-        :param generations:
-        :param crossover:
-        :param mutate:
+        :param generations:     int, max number of iterations the algorithm's to run for
+        :param crossovers:      float, (0.0 -> 1.0) percentage of population to create new solutions
+        :param mutations:       float, (0.0 -> 1.0) percentage of population to have their chromosomes altered
+        :param population:      Population, group of individuals to run the algorithm on
         """
         self._generations = generations
-        self._crossover = crossover
-        self._mutate = mutate
-        self._population = None
+        self._crossovers = crossovers
+        self._mutations = mutations
+        self._population = population
 
     @property
     def generations(self):
@@ -29,20 +37,20 @@ class GeneticAlgorithm(object):
         self._generations = generations
 
     @property
-    def crossover(self):
-        return self._crossover
+    def crossovers(self):
+        return self._crossovers
 
-    @crossover.setter
-    def crossover(self, crossover):
-        self._crossover = crossover
+    @crossovers.setter
+    def crossovers(self, crossovers):
+        self._crossovers = crossovers
 
     @property
-    def mutate(self):
-        return self._mutate
+    def mutations(self):
+        return self._mutations
 
-    @mutate.setter
-    def mutate(self, mutate):
-        self._mutate = mutate
+    @mutations.setter
+    def mutations(self, mutations):
+        self._mutations = mutations
 
     @property
     def population(self):
@@ -52,41 +60,101 @@ class GeneticAlgorithm(object):
     def population(self, population):
         self._population = population
 
-    """def best_selection(self, weighted_population):
-        amount_of_copies = round((1 - self.crossover) * self.population.size)
-        return weighted_population[0:amount_of_copies]"""
-
-    def roulette_wheel_selection(self, weighted_population):
+    def evolve(self, min_value=None, print_steps=True):
         """
-        Select which individuals to be copied to the next generation using roulette wheel selection.
-        Probability of selection is equal to relative fitness.
+        Evolve the population using copy, crossover, and mutate.
 
-        :return: list of individuals to be added to next generation
+        :param min_value:       float, algorithm terminates if solution with sufficient accuracy is found
+        :param print_steps:     boolean, print solution for each generation if True
+        :return:                individual, the best candidate solution found by the algorithm
         """
-        amount_of_copies = round((1 - self.crossover) * self.population.size)
-        chosen = []
-        total_fitness = 0
-        probabilities = []
-        offset = weighted_population[0][1]
+        for generation in range(self.generations):
+            new_population = []
+            # Copy
+            new_population += self.copy()
+            # Crossover
+            new_population += self.crossover()
+            # Mutate
+            self.mutate(new_population)
+            # Evaluate fitness of individuals
+            self.population.individuals = new_population
+            self.population.set_population_fitness()
+            if print_steps:
+                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
+            if min_value is not None:
+                if min_value < 0 and self.population.best_individual.fitness < min_value-1*10**-self.population.precision:
+                    break
+                elif self.population.best_individual.fitness < min_value+1*10**-self.population.precision:
+                    break
+        return self.population.best_individual
 
-        # Calculate sum of all individuals fitness'
-        for ind in weighted_population:
-            total_fitness += ind.fitness - offset + 1
-        print("total fitness: ", total_fitness)
+    def copy(self):
+        """
+        Copies the best individuals, picked by the selection function.
+        Calculates amount of individuals to be copied for the next generation.
+        Then uses a selection function to pick the individuals from the population.
 
-        total = 0
-        # Calculate individuals probability of being picked
-        for ind in weighted_population:
-            total += (ind.fitness - offset + 1)/total_fitness
-            probabilities += [(ind.fitness - offset + 1)/total_fitness]
-        print("probabilities: ", probabilities)
-        print(total)
+        :return:    [individuals], individuals selected from population to survive for the next generation
+        """
+        amount_of_copies = round((1 - self.crossovers) * self.population.size)
+        return self.rank_selection(amount_of_copies)
 
-        # Pick individuals based on probability
-        for i in range(amount_of_copies):
-            selected = random.uniform
-        print(chosen)
-        return chosen
+    def crossover(self):
+        """
+        Crosses over individuals to create offspring.
+        Calculates amount of individuals, parents, that will be crossed over.
+        Parents are then selected from the population using the selection function.
+        Each pair of parents will create two offspring.
+        **The amount of parents must be even as two parents are needed to create two children.
+
+        :return:    [individuals], new individuals for the next generation
+        """
+        amount_of_parents = round(self.crossovers * self.population.size)
+        parents = self.rank_selection(amount_of_parents)
+        offspring = []
+        for i in range(len(parents)):
+            if i % 2 == 1:
+                offspring_1, offspring_2 = self.population.create_individual(), self.population.create_individual()
+                offspring_1.chromosome, offspring_2.chromosome = self.chromosome_crossover(parents[i - 1].chromosome,
+                                                                                           parents[i].chromosome)
+                offspring += [offspring_1, offspring_2]
+        return offspring
+
+    @staticmethod
+    def chromosome_crossover(parent_1, parent_2):
+        """
+        Combines two parent chromosomes to create two new offspring chromosomes.
+
+        :param parent_1:    [floats], chromosome of the first parent
+        :param parent_2:    [floats], chromosome of the second parent
+        :return:            [chromosomes], a list of the two new chromosomes
+        """
+        genes = len(parent_1)
+        offspring_chromosomes = []
+        for _ in range(2):
+            new_chromosome = []
+            for gene in range(genes):
+                # TODO check if genes should be rounded to precision or just fitness
+                new_chromosome += [random.uniform(min(parent_1[gene], parent_2[gene]),
+                                                  max(parent_1[gene], parent_2[gene]))]
+            offspring_chromosomes += [new_chromosome]
+        return offspring_chromosomes
+
+    def mutate(self, new_population):
+        """
+        Mutates random gene of random individuals in the population.
+        Calculates the amount of individuals to have their chromosomes mutated.
+        A mutation is randomly selected from anywhere in the search space.
+        An individual is randomly selected, as is one of it's genes, and then the mutation becomes the selected gene.
+
+        :param new_population:      [individuals], new population before mutation
+        """
+        amount_to_mutate = round(self.population.size * self.mutations)
+        for _ in range(amount_to_mutate):
+            mutation = random.uniform(self.population.domain[0], self.population.domain[1])
+            rand_ind = random.randint(0, self.population.size)
+            rand_gene = random.randint(0, self.population.genes)
+            new_population[rand_ind].chromosome[rand_gene] = mutation
 
     def rank_selection(self, amount_of_copies):
         # Assign ranks and calculate total
@@ -94,12 +162,13 @@ class GeneticAlgorithm(object):
         total = 0
         for i in range(self.population.size):
             ranks += [1 / (i + 2)]
-            total += 1 / (i+2)
+            total += 1 / (i + 2)
         # Assign probabilities based on rank
         probabilities = []
         for i in range(self.population.size):
             probabilities += [ranks[i]/total]
         # Select individuals based on probabilities
+        self.population.sort_by_fitness()
         chosen = []
         for _ in range(amount_of_copies):
             selected = random.uniform(0, 1)
@@ -110,68 +179,17 @@ class GeneticAlgorithm(object):
                     break
         return chosen
 
+    def roulette_wheel_selection(self, weighted_population):
+        pass
+
     def tournament_selection(self):
         pass
 
-    def ga_mutate(self, population):
-        amount_to_mutate = round(self.population.size * self.mutate)
-        for _ in range(amount_to_mutate):
-            mutation = round(random.uniform(self.population.domain[0], self.population.domain[1]),
-                             self.population.precision)
-            rand_ind = np.random.randint(0, self.population.size)
-            rand_gene = np.random.randint(0, self.population.genes)
-            population[rand_ind].chromosome[rand_gene] = mutation
-
-    def ga_copy(self):
-        amount_of_copies = round((1 - self.crossover) * self.population.size)
-        return self.rank_selection(amount_of_copies)
-
-    def ga_crossover(self):
-        offspring = []
-        amount_of_parents = round(self.crossover * self.population.size)
-        parents = self.rank_selection(amount_of_parents)
-        # Length of parents must be even
-        for i in range(len(parents)):
-            if i % 2 == 1:
-                offspring += self.real_crossover(parents[i - 1], parents[i])
-        return offspring
-
-    def real_crossover(self, parent1, parent2):
-        offspring = []
-        for _ in range(2):
-            ind = Individual(self.population.genes, self.population.precision, self.population.domain)
-            for gene in range(self.population.genes):
-                ind.chromosome[gene] = round(random.uniform(min(parent1.chromosome[gene], parent2.chromosome[gene]),
-                                                            max(parent1.chromosome[gene], parent2.chromosome[gene])
-                                                            ), self.population.precision)
-                ind.fitness = self.population.get_fitness(ind)
-            offspring += [ind]
-        return offspring
-
-    def run(self):
-        """
-        Run the Genetic Algorithm.
-
-        :return:
-        """
-        # Rank selection only works with sorted population
-        self.population.sort_by_fitness()
-        for generation in range(self.generations):
-            new_population = []
-            # Copy
-            new_population += self.ga_copy()
-            # Crossover
-            new_population += self.ga_crossover()
-            # Mutate
-            self.ga_mutate(new_population)
-            # Evaluate fitness of individuals
-            self.population.individuals = new_population
-            self.population.set_population_fitness()
-            self.population.sort_by_fitness()
-        print("Genetic Algorithm Best: ", self.population.best_individual)
-
 
 if __name__ == "__main__":
-    ga = GeneticAlgorithm(generations=100, crossover=0.8, mutate=0.01)
-    ga.population = Population(size=100, genes=2, precision=6, domain=[-50, 50], fitness_function=cb.f13)
-    ga.run()
+    benchmark = ComparativeBenchmarks.f2()
+    population = Population(size=100, genes=3, precision=5, domain=benchmark.domain,
+                            fitness_function=benchmark.function)
+    ga = GeneticAlgorithm(generations=250, crossovers=0.9, mutations=0.1, population=population)
+    individual = ga.evolve(min_value=benchmark.min_value)
+    print(individual)
