@@ -1,4 +1,4 @@
-from EA.Population import Population
+from By.Population import Population
 from NO.ComparativeBenchmarks import *
 import numpy as np
 
@@ -71,14 +71,14 @@ class DifferentialEvolution(object):
             for i in range(self.population.size):
                 agent = self.population.individuals[i]
                 new_agent = self.new_position(agent)
-                if new_agent.fitness < agent.fitness:
+                if new_agent.fitness > agent.fitness:
                     self.population.individuals[i] = new_agent
             if print_steps:
                 print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
             if min_value is not None:
-                if min_value < 0 and self.population.best_individual.fitness < min_value-1*10**-self.population.precision:
+                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
                     break
-                elif self.population.best_individual.fitness < min_value+1*10**-self.population.precision:
+                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
                     break
         return self.population.best_individual
 
@@ -93,18 +93,17 @@ class DifferentialEvolution(object):
         agents = self.three_unique_agents(agent)
         a, b, c = agents
         # Pick random index in range of dimensions (genes)
-        R = np.random.randint(0, self.population.genes)
+        R = np.random.randint(0, self.population.dimensions)
         # Compute the new agents position
         new_agent = self.population.create_individual()
-        for j in range(self.population.genes):
+        for j in range(self.population.dimensions):
             # For each gene pick a uniformly distributed random number
             ri = round(np.random.random_sample(), 2)
             if ri < self.crossover or j == R:
-                new_agent.chromosome[j] = round(a.chromosome[j] + self.mutate * (b.chromosome[j] - c.chromosome[j]),
-                                                self.population.precision)
+                new_agent.solution[j] = a.solution[j] + self.mutate * (b.solution[j] - c.solution[j])
             else:
-                new_agent.chromosome[j] = agent.chromosome[j]
-        self.population.set_individual_fitness(new_agent)
+                new_agent.solution[j] = agent.solution[j]
+        self.population.set_individuals_fitness(new_agent)
         return new_agent
 
     def three_unique_agents(self, agent):
@@ -126,7 +125,6 @@ class DifferentialEvolution(object):
 if __name__ == "__main__":
     benchmark = ComparativeBenchmarks.f1()
     de = DifferentialEvolution(generations=100, crossover=0.8, mutate=0.6)
-    de.population = Population(size=100, genes=3, precision=6, domain=benchmark.domain,
-                               fitness_function=benchmark.function)
+    de.population = Population(size=100, dimensions=3, precision=6, domain=benchmark.domain, function=benchmark.function)
     agent = de.evolve(min_value=benchmark.min_value, print_steps=True)
     print("Best Solution: ", agent)

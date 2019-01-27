@@ -1,5 +1,5 @@
 import numpy.random as random
-from EA.Population import Population
+from By.Population import Population
 from NO.ComparativeBenchmarks import ComparativeBenchmarks
 
 
@@ -78,13 +78,13 @@ class GeneticAlgorithm(object):
             self.mutate(new_population)
             # Evaluate fitness of individuals
             self.population.individuals = new_population
-            self.population.set_population_fitness()
+            self.population.set_populations_fitness()
             if print_steps:
                 print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
             if min_value is not None:
-                if min_value < 0 and self.population.best_individual.fitness < min_value-1*10**-self.population.precision:
+                if min_value < 0 and self.population.best_individual.value < min_value - (1*10**-self.population.precision):
                     break
-                elif self.population.best_individual.fitness < min_value+1*10**-self.population.precision:
+                elif self.population.best_individual.value < min_value + (1 * 10 ** -self.population.precision):
                     break
         return self.population.best_individual
 
@@ -115,8 +115,8 @@ class GeneticAlgorithm(object):
         for i in range(len(parents)):
             if i % 2 == 1:
                 offspring_1, offspring_2 = self.population.create_individual(), self.population.create_individual()
-                offspring_1.chromosome, offspring_2.chromosome = self.chromosome_crossover(parents[i - 1].chromosome,
-                                                                                           parents[i].chromosome)
+                offspring_1.solution, offspring_2.solution = self.chromosome_crossover(parents[i - 1].solution,
+                                                                                           parents[i].solution)
                 offspring += [offspring_1, offspring_2]
         return offspring
 
@@ -153,8 +153,8 @@ class GeneticAlgorithm(object):
         for _ in range(amount_to_mutate):
             mutation = random.uniform(self.population.domain[0], self.population.domain[1])
             rand_ind = random.randint(0, self.population.size)
-            rand_gene = random.randint(0, self.population.genes)
-            new_population[rand_ind].chromosome[rand_gene] = mutation
+            rand_gene = random.randint(0, self.population.dimensions)
+            new_population[rand_ind].solution[rand_gene] = mutation
 
     def rank_selection(self, amount_of_copies):
         # Assign ranks and calculate total
@@ -187,9 +187,8 @@ class GeneticAlgorithm(object):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f2()
-    population = Population(size=100, genes=3, precision=5, domain=benchmark.domain,
-                            fitness_function=benchmark.function)
-    ga = GeneticAlgorithm(generations=250, crossovers=0.9, mutations=0.1, population=population)
+    benchmark = ComparativeBenchmarks.f1()
+    population = Population(size=100, dimensions=3, precision=5, domain=benchmark.domain, function=benchmark.function)
+    ga = GeneticAlgorithm(generations=250, crossovers=0.8, mutations=0.2, population=population)
     individual = ga.evolve(min_value=benchmark.min_value)
     print(individual)

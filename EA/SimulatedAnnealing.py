@@ -16,8 +16,8 @@ For k = 0 through kMax(exclusive):
 Output: final state s
 """
 import numpy as np
-import NO.ComparativeBenchmarks as cb
-from EA.Population import Population
+from NO.ComparativeBenchmarks import ComparativeBenchmarks
+from By.Population import Population
 
 
 class SimulatedAnnealing(object):
@@ -42,7 +42,7 @@ class SimulatedAnnealing(object):
     def population(self, population):
         self._population = population
 
-    def annealing(self, print_steps=True):
+    def annealing(self, min_value=None, print_steps=True):
         """
         Run the simulated annealing algorithm.
         Temperature goes down each step.
@@ -51,20 +51,23 @@ class SimulatedAnnealing(object):
         :return:
         """
         state = self.population.create_individual()
-        self.population.set_individual_fitness(state)
+        self.population.set_individuals_fitness(state)
         for step in range(self.max_steps):
             fraction = step / float(self.max_steps)
             T = self.temperature(fraction)
             new_state = self.population.create_individual()
-            new_state.chromosome = self.neighbour(state.chromosome)
-            self.population.set_individual_fitness(new_state)
+            new_state.solution = self.neighbour(state.solution)
+            self.population.set_individuals_fitness(new_state)
             # new_state.set_fitness(self.energy(new_state.chromosome))
-            if self.acceptance_probability(state.fitness, new_state.fitness, T) > np.random.random():
+            if self.acceptance_probability(state.value, new_state.value, T) > np.random.random():
                 state = new_state
             if print_steps:
                 print("Step ", step, " / ", self.max_steps, "; ", state)
-            if state.fitness < 1*10**-self.population.precision:
-                break
+            if min_value is not None:
+                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
+                    break
+                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
+                    break
         return state
 
     def bind(self, x):
@@ -101,11 +104,11 @@ class SimulatedAnnealing(object):
         :return:            [floats], chromosome
         """
         amplitude = (self.population.domain[1] - self.population.domain[0]) * fraction / 10
-        chromosome = [None] * self.population.genes
-        for i in range(self.population.genes):
+        solution = [None] * self.population.dimensions
+        for i in range(self.population.dimensions):
             delta = (-amplitude/2) + amplitude * np.random.random_sample()
-            chromosome[i] = self.bind(x[i] + delta)
-        return chromosome
+            solution[i] = self.bind(x[i] + delta)
+        return solution
 
     @staticmethod
     def acceptance_probability(cost, new_cost, temperature):
@@ -141,7 +144,8 @@ class SimulatedAnnealing(object):
 
 
 if __name__ == "__main__":
+    benchmark = ComparativeBenchmarks.f1()
     sa = SimulatedAnnealing(max_steps=1000)
-    sa.population = Population(size=100, genes=1, precision=6, domain=[-10, 10], fitness_function=cb.f1)
+    sa.population = Population(size=100, dimensions=1, precision=6, domain=benchmark.domain, function=benchmark.function)
     state = sa.annealing(print_steps=True)
     print("State: ", state)

@@ -1,4 +1,4 @@
-from EA.Population import Population
+from By.Population import Population
 from NO.ComparativeBenchmarks import ComparativeBenchmarks
 from numpy import random
 
@@ -39,13 +39,13 @@ class ParticleSwarmOptimisation(object):
             for particle in self.population.individuals:
                 self.update_velocity(particle)
                 self.update_position(particle)
-                self.population.set_individual_fitness(particle)
+                self.population.set_individuals_fitness(particle)
             if print_steps:
                 print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
             if min_value is not None:
-                if min_value < 0 and self.population.best_individual.fitness<min_value-1*10**-self.population.precision:
+                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
                     break
-                elif self.population.best_individual.fitness < min_value+1*10**-self.population.precision:
+                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
                     break
         return self.population.best_individual
 
@@ -56,13 +56,13 @@ class ParticleSwarmOptimisation(object):
         :param particle:    Individual, particle to update it's velocity
         """
         v = []
-        for gene in range(self.population.genes):
+        for d in range(self.population.dimensions):
             rc = random.uniform(0, 1)
             rs = random.uniform(0, 1)
-            cognitive = self.cognitive_constant * rc * (particle.best_chromosome[gene] - particle.chromosome[gene])
-            social = self.social_constant * rs * (self.population.best_individual.chromosome[gene] -
-                                                  particle.chromosome[gene])
-            v += [self.inertia_weight * particle.velocity[gene] + cognitive + social]
+            cognitive = self.cognitive_constant * rc * (particle.best_solution[d] - particle.solution[d])
+            social = self.social_constant * rs * (self.population.best_individual.solution[d] -
+                                                  particle.solution[d])
+            v += [self.inertia_weight * particle.velocity[d] + cognitive + social]
         particle.velocity = v
 
     def update_position(self, particle):
@@ -71,20 +71,19 @@ class ParticleSwarmOptimisation(object):
 
         :param particle:    Individual, the particle to update it's position
         """
-        for gene in range(self.population.genes):
-            particle.chromosome[gene] = round(particle.chromosome[gene] + particle.velocity[gene],
+        for d in range(self.population.dimensions):
+            particle.solution[d] = round(particle.solution[d] + particle.velocity[d],
                                               self.population.precision)
-            if particle.chromosome[gene] < self.population.domain[0]:
-                particle.chromosome[gene] = self.population.domain[0]
-            elif particle.chromosome[gene] > self.population.domain[1]:
-                particle.chromosome[gene] = self.population.domain[1]
+            if particle.solution[d] < self.population.domain[0]:
+                particle.solution[d] = self.population.domain[0]
+            elif particle.solution[d] > self.population.domain[1]:
+                particle.solution[d] = self.population.domain[1]
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f1()
-    population = Population(size=100, genes=3, precision=6, domain=benchmark.domain,
-                            fitness_function=benchmark.function)
+    benchmark = ComparativeBenchmarks.f5(dimensions=3)
+    population = Population(size=100, dimensions=3, precision=6, domain=benchmark.domain, function=benchmark.function)
     pso = ParticleSwarmOptimisation(generations=100, inertia_weight=0.4, cognitive_constant=1, social_constant=1,
                                     population=population)
-    particle = pso.swarm(benchmark.min_value)
+    particle = pso.swarm(min_value=benchmark.min_value)
     print("Best Particle: ", particle)

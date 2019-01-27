@@ -77,6 +77,13 @@ class ComparativeBenchmarks(object):
                 ComparativeBenchmarks.f13()]
 
     @staticmethod
+    def benchmarks_specified_dimension():
+        return [ComparativeBenchmarks.f14(), ComparativeBenchmarks.f15(), ComparativeBenchmarks.f16(),
+                ComparativeBenchmarks.f17(), ComparativeBenchmarks.f18(), ComparativeBenchmarks.f19(),
+                ComparativeBenchmarks.f20(), ComparativeBenchmarks.f21(), ComparativeBenchmarks.f22(),
+                ComparativeBenchmarks.f23()]
+
+    @staticmethod
     def f1(domain=(-5.12, 5.12), dimensions=30):
         """
 
@@ -208,7 +215,8 @@ class ComparativeBenchmarks(object):
             for i in range(len(x)):
                 sum += -x[i] * math.sin(math.sqrt(abs(x[i])))
             return sum
-        return Benchmark(function=function, domain=domain, dimensions=dimensions, min_value=None, name="Generalised Schwefel's Problem 2.26")
+        min_value = -(418.983 * dimensions)
+        return Benchmark(function=function, domain=domain, dimensions=dimensions, min_value=min_value, name="Generalised Schwefel's Problem 2.26")
 
     @staticmethod
     def f9(domain=(-5.12, 5.12), dimensions=30):
