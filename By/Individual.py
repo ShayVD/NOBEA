@@ -4,10 +4,12 @@ import numpy.random as random
 class Individual(object):
 
     def __init__(self, dimensions, domain):
+        self.dimensions = dimensions
+        self.domain = domain
         self._solution = [None] * dimensions
         self._velocity = [None] * dimensions
-        self._random_solution(dimensions, domain)
-        self._random_velocity(dimensions, domain)
+        self.random_solution()
+        self.random_velocity()
         self._best_solution = self.solution
         self._fitness = None
         self._best_fitness = None
@@ -70,13 +72,13 @@ class Individual(object):
     def counter(self, counter):
         self._counter = counter
 
-    def _random_solution(self, dimensions, domain):
-        for d in range(dimensions):
-            self.solution[d] = random.uniform(domain[0], domain[1])
+    def random_solution(self):
+        for d in range(self.dimensions):
+            self.solution[d] = random.uniform(self.domain[0], self.domain[1])
 
-    def _random_velocity(self, dimensions, domain):
-        for d in range(dimensions):
-            self.velocity[d] = random.uniform(-abs(domain[1] - domain[0]), abs(domain[1] - domain[0]))
+    def random_velocity(self):
+        for d in range(self.dimensions):
+            self.velocity[d] = random.uniform(-abs(self.domain[1] - self.domain[0]), abs(self.domain[1] - self.domain[0]))
 
     def __eq__(self, other):
         n = len(self.solution)

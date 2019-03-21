@@ -3,9 +3,10 @@ from NO.ComparativeBenchmarks import ComparativeBenchmarks
 from numpy import random
 
 
-class ParticleSwarmOptimisation(object):
+class ParticleSwarmOptimisation(Population):
 
-    def __init__(self, generations=100, inertia_weight=0.5, cognitive_constant=1, social_constant=2, population=None):
+    def __init__(self, inertia_weight, cognitive_constant, social_constant, size, generations, dimensions, domain,
+                 precision, function):
         """
         Set class attributes.
 
@@ -13,21 +14,44 @@ class ParticleSwarmOptimisation(object):
         :param inertia_weight:      float, (0.0 -> 1.0)
         :param cognitive_constant:  int,
         :param social_constant:     int,
-        :param population:          Population, group of particles to run the algorithm on
         """
+        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
         self.generations = generations
         self.inertia_weight = inertia_weight
         self.cognitive_constant = cognitive_constant
         self.social_constant = social_constant
-        self._population = population
 
     @property
-    def population(self):
-        return self._population
+    def generations(self):
+        return self._generations
 
-    @population.setter
-    def population(self, population):
-        self._population = population
+    @generations.setter
+    def generations(self, generations):
+        self._generations = generations
+
+    @property
+    def inertia_weight(self):
+        return self._inertia_weight
+
+    @inertia_weight.setter
+    def inertia_weight(self, inertia_weight):
+        self._inertia_weight = inertia_weight
+
+    @property
+    def cognitive_constant(self):
+        return self._cognitive_constant
+
+    @cognitive_constant.setter
+    def cognitive_constant(self, cognitive_constant):
+        self._cognitive_constant = cognitive_constant
+
+    @property
+    def social_constant(self):
+        return self._social_constant
+
+    @social_constant.setter
+    def social_constant(self, social_constant):
+        self._social_constant = social_constant
 
     def swarm(self, min_value=None, print_steps=True):
         """
@@ -36,54 +60,48 @@ class ParticleSwarmOptimisation(object):
         :return:    Individual, particle that produces the best solution
         """
         for generation in range(self.generations):
-            for particle in self.population.individuals:
-                self.update_velocity(particle)
-                self.update_position(particle)
-                self.population.set_individuals_fitness(particle)
+            for i in range(self.size):
+                self.update_velocity(i)
+                self.update_position(i)
+                self.set_fitness(i)
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
-            if min_value is not None:
-                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
-                    break
-                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
-                    break
-        return self.population.best_individual
+                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
+            if min_value is not None and self.solution_precision(min_value):
+                break
+        return self.best_individual
 
-    def update_velocity(self, particle):
+    def update_velocity(self, index):
         """
         Update particle's velocity.
 
         :param particle:    Individual, particle to update it's velocity
         """
+        particle = self.individuals[index]
         v = []
-        for d in range(self.population.dimensions):
+        for d in range(self.dimensions):
             rc = random.uniform(0, 1)
             rs = random.uniform(0, 1)
             cognitive = self.cognitive_constant * rc * (particle.best_solution[d] - particle.solution[d])
-            social = self.social_constant * rs * (self.population.best_individual.solution[d] -
+            social = self.social_constant * rs * (self.best_individual.solution[d] -
                                                   particle.solution[d])
             v += [self.inertia_weight * particle.velocity[d] + cognitive + social]
         particle.velocity = v
 
-    def update_position(self, particle):
+    def update_position(self, index):
         """
         Update particle's position within the search space.
 
         :param particle:    Individual, the particle to update it's position
         """
-        for d in range(self.population.dimensions):
-            particle.solution[d] = round(particle.solution[d] + particle.velocity[d],
-                                              self.population.precision)
-            if particle.solution[d] < self.population.domain[0]:
-                particle.solution[d] = self.population.domain[0]
-            elif particle.solution[d] > self.population.domain[1]:
-                particle.solution[d] = self.population.domain[1]
+        particle = self.individuals[index]
+        for d in range(self.dimensions):
+            particle.solution[d] = self.bind(particle.solution[d] + particle.velocity[d])
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f5(dimensions=3)
-    population = Population(size=100, dimensions=3, precision=6, domain=benchmark.domain, function=benchmark.function)
-    pso = ParticleSwarmOptimisation(generations=100, inertia_weight=0.4, cognitive_constant=1, social_constant=1,
-                                    population=population)
+    benchmark = ComparativeBenchmarks.f2()
+    pso = ParticleSwarmOptimisation(inertia_weight=0.2, cognitive_constant=1.9, social_constant=1.9, size=100,
+                                    generations=500, dimensions=30, domain=benchmark.domain, precision=6,
+                                    function=benchmark.function)
     particle = pso.swarm(min_value=benchmark.min_value)
     print("Best Particle: ", particle)

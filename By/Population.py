@@ -1,7 +1,10 @@
 from By.Individual import Individual
+import numpy.random as random
+import copy
+from abc import ABC
 
 
-class Population(object):
+class Population(ABC):
 
     def __init__(self, size, dimensions, precision, domain, function):
         self._individuals = [None] * size
@@ -69,20 +72,26 @@ class Population(object):
         self.__init__(self.size, self.dimensions, self.precision, self.domain, self.function)
 
     def set_populations_fitness(self):
-        for individual in self.individuals:
-            self.set_individuals_fitness(individual)
+        for i in range(self.size):
+            self.set_fitness(i)
 
-    def set_individuals_fitness(self, individual):
-        individual.value = self.get_solutions_value(individual.solution)
-        individual.fitness = self.get_values_fitness(individual.value)
-        if self.best_individual is None or individual.fitness > self.best_individual.fitness:
-            self.best_individual = individual
+    def set_fitness(self, index):
+        ind = self.individuals[index]
+        ind.value = self.get_solutions_value(ind.solution)
+        ind.fitness = self.get_fitness(ind.value)
+        if self.best_individual is None or ind.fitness > self.best_individual.fitness:
+            self.best_individual = copy.deepcopy(ind)
 
     def get_solutions_value(self, solution):
         return self.function(solution)
 
+    def random_solution(self, index):
+        ind = self.individuals[index]
+        for d in range(self.dimensions):
+            ind.solution[d] = random.uniform(self.domain[0], self.domain[1])
+
     @staticmethod
-    def get_values_fitness(value):
+    def get_fitness(value):
         if value >= 0:
             fitness = 1 / (1 + value)
         else:
@@ -91,21 +100,45 @@ class Population(object):
 
     def get_solutions_fitness(self, solution):
         value = self.get_solutions_value(solution)
-        return self.get_values_fitness(value)
+        return self.get_fitness(value)
 
     def _random_population(self):
         for i in range(self.size):
-            individual = self.create_individual()
-            self.set_individuals_fitness(individual)
-            self.individuals[i] = individual
+            self.individuals[i] = self.create_individual()
+            self.set_fitness(i)
 
     def create_individual(self):
         return Individual(self.dimensions, self.domain)
 
-    def sort_by_fitness(self):
+    def sort_by_fitness(self, increasing_order=True):
         sorted_individuals = self.individuals.copy()
-        sorted_individuals.sort(key=lambda i: i.fitness, reverse=True)
+        if increasing_order:
+            sorted_individuals.sort(key=lambda i: i.fitness, reverse=False)
+        else:
+            sorted_individuals.sort(key=lambda i: i.fitness, reverse=True)
         self.individuals = sorted_individuals
+
+    def solution_precision(self, min_value):
+        precision_met = False
+        if min_value < 0 and self.best_individual.value < min_value - (1 * 10 ** -self.precision):
+            precision_met = True
+        elif self.best_individual.value < min_value + (1 * 10 ** -self.precision):
+            precision_met = True
+        return precision_met
+
+    def bind(self, x):
+        """
+        Keeps x within the domain.
+
+        :param x:   float
+        :return:    float
+        """
+        if x < self.domain[0]:
+            return self.domain[0]
+        elif x > self.domain[1]:
+            return self.domain[1]
+        else:
+            return x
 
     def __str__(self):
         str = "[->"

@@ -1,46 +1,22 @@
-"""
-State space = domain
-Energy (goal) function E()
-Candidate generator procedure neighbour()
-Acceptance probability function P()
-Annealing schedule temperature()
-Initial temperature
-
-Pseudo-code:
-Let s = s0
-For k = 0 through kMax(exclusive):
-    T <- temperature(k/kMax)
-    Pick a random neighbour, sNew <- neighbour(s)
-    If P( E(s), E(sNew), T ) >= random(0,1):
-        s <- sNew
-Output: final state s
-"""
 import numpy as np
 from NO.ComparativeBenchmarks import ComparativeBenchmarks
 from By.Population import Population
+import copy
 
 
-class SimulatedAnnealing(object):
+class SimulatedAnnealing(Population):
 
-    def __init__(self, max_steps):
+    def __init__(self, max_steps, size, dimensions, domain, precision, function):
         """
 
         :param max_steps:
         """
+        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
         self._max_steps = max_steps
-        self._population = None
 
     @property
     def max_steps(self):
         return self._max_steps
-
-    @property
-    def population(self):
-        return self._population
-
-    @population.setter
-    def population(self, population):
-        self._population = population
 
     def annealing(self, min_value=None, print_steps=True):
         """
@@ -50,39 +26,26 @@ class SimulatedAnnealing(object):
         :param print_steps: bool, if True print state at each step
         :return:
         """
-        state = self.population.create_individual()
-        self.population.set_individuals_fitness(state)
+        state = self.create_individual()
+        state.value = self.get_solutions_value(state.solution)
+        state.fitness = self.get_fitness(state.value)
+        self.best_individual = copy.deepcopy(state)
         for step in range(self.max_steps):
             fraction = step / float(self.max_steps)
             T = self.temperature(fraction)
-            new_state = self.population.create_individual()
+            new_state = self.create_individual()
             new_state.solution = self.neighbour(state.solution)
-            self.population.set_individuals_fitness(new_state)
-            # new_state.set_fitness(self.energy(new_state.chromosome))
+            new_state.value = self.get_solutions_value(new_state.solution)
+            new_state.fitness = self.get_fitness(new_state.value)
+            if new_state.fitness > self.best_individual.fitness:
+                self.best_individual = copy.deepcopy(new_state)
             if self.acceptance_probability(state.value, new_state.value, T) > np.random.random():
                 state = new_state
             if print_steps:
                 print("Step ", step, " / ", self.max_steps, "; ", state)
-            if min_value is not None:
-                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
-                    break
-                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
-                    break
-        return state
-
-    def bind(self, x):
-        """
-        Keeps x within the domain.
-
-        :param x:   float
-        :return:    float
-        """
-        if x < self.population.domain[0]:
-            return self.population.domain[0]
-        elif x > self.population.domain[1]:
-            return self.population.domain[1]
-        else:
-            return x
+            if min_value is not None and self.solution_precision(min_value):
+                break
+        return self.best_individual
 
     def energy(self, x):
         """
@@ -91,7 +54,7 @@ class SimulatedAnnealing(object):
         :param x:   [floats], individuals chromosome
         :return:    float, individuals fitness
         """
-        return self.population.fitness_function(x)
+        return self.function(x)
 
     def neighbour(self, x, fraction=1.0):
         """
@@ -103,9 +66,9 @@ class SimulatedAnnealing(object):
         :param fraction:    float
         :return:            [floats], chromosome
         """
-        amplitude = (self.population.domain[1] - self.population.domain[0]) * fraction / 10
-        solution = [None] * self.population.dimensions
-        for i in range(self.population.dimensions):
+        amplitude = (self.domain[1] - self.domain[0]) * fraction / 10
+        solution = [None] * self.dimensions
+        for i in range(self.dimensions):
             delta = (-amplitude/2) + amplitude * np.random.random_sample()
             solution[i] = self.bind(x[i] + delta)
         return solution
@@ -145,7 +108,7 @@ class SimulatedAnnealing(object):
 
 if __name__ == "__main__":
     benchmark = ComparativeBenchmarks.f1()
-    sa = SimulatedAnnealing(max_steps=1000)
-    sa.population = Population(size=100, dimensions=1, precision=6, domain=benchmark.domain, function=benchmark.function)
+    sa = SimulatedAnnealing(max_steps=50000, size=100, dimensions=1, precision=6, domain=benchmark.domain,
+                            function=benchmark.function)
     state = sa.annealing(print_steps=True)
     print("State: ", state)

@@ -1,9 +1,9 @@
 from By.Population import Population
-from NO.ComparativeBenchmarks import *
+from NO.ComparativeBenchmarks import ComparativeBenchmarks
 import numpy as np
 
 
-class DifferentialEvolution(object):
+class DifferentialEvolution(Population):
     """
     DE is a meta-heuristic that optimises a problem by iteratively trying to improve candidate solutions, agents,
     with regard to a given measure of quality, the fitness function.
@@ -14,19 +14,18 @@ class DifferentialEvolution(object):
     When a satisfactory solution is found to the fitness function, or max iterations is reached, the algorithm stops.
     """
 
-    def __init__(self, generations=100, crossover=0.9, mutate=0.8, population=None):
+    def __init__(self, crossover, mutate, size, generations, dimensions, domain, precision, function):
         """
         Set class attributes.
 
         :param generations:     int, amount of iterations the algorithm will run
         :param crossover:       float, probability of crossover
         :param mutate:          float, probability of mutation
-        :param population:      Population, population the algorithm will run on
         """
+        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
         self._generations = generations
         self._crossover = crossover
         self._mutate = mutate
-        self._population = population
 
     @property
     def generations(self):
@@ -52,14 +51,6 @@ class DifferentialEvolution(object):
     def mutate(self, mutate):
         self._mutate = mutate
 
-    @property
-    def population(self):
-        return self._population
-
-    @population.setter
-    def population(self, population):
-        self._population = population
-
     def evolve(self, min_value=None, print_steps=True):
         """
         Evolve the population.
@@ -68,63 +59,63 @@ class DifferentialEvolution(object):
         :return:                individual, best individual after max iterations or required fitness
         """
         for generation in range(self.generations):
-            for i in range(self.population.size):
-                agent = self.population.individuals[i]
-                new_agent = self.new_position(agent)
-                if new_agent.fitness > agent.fitness:
-                    self.population.individuals[i] = new_agent
+            for i in range(self.size):
+                self.new_position(i)
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
-            if min_value is not None:
-                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
-                    break
-                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
-                    break
-        return self.population.best_individual
+                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
+            if min_value is not None and self.solution_precision(min_value):
+                break
+        return self.best_individual
 
-    def new_position(self, agent):
+    def new_position(self, index):
         """
         Create agent with new position, that will replace given agent if it's fitness is better.
 
-        :param agent:   individual, the individual that will be replaced if a better solution is found
+        :param index:   individual, the individual that will be replaced if a better solution is found
         :return:        individual
         """
-        # Pick 3 unique agents
-        agents = self.three_unique_agents(agent)
-        a, b, c = agents
+        agent = self.individuals[index]
+        # Pick 3 unique solutions
+        solutions = self.unique_agents(index, 3)
+        a = self.individuals[solutions[0]].solution
+        b = self.individuals[solutions[1]].solution
+        c = self.individuals[solutions[2]].solution
         # Pick random index in range of dimensions (genes)
-        R = np.random.randint(0, self.population.dimensions)
+        R = np.random.randint(0, self.dimensions)
         # Compute the new agents position
-        new_agent = self.population.create_individual()
-        for j in range(self.population.dimensions):
+        solution = [None] * self.dimensions
+        for j in range(self.dimensions):
             # For each gene pick a uniformly distributed random number
             ri = round(np.random.random_sample(), 2)
             if ri < self.crossover or j == R:
-                new_agent.solution[j] = a.solution[j] + self.mutate * (b.solution[j] - c.solution[j])
+                solution[j] = self.bind(a[j] + self.mutate * (b[j] - c[j]))
             else:
-                new_agent.solution[j] = agent.solution[j]
-        self.population.set_individuals_fitness(new_agent)
-        return new_agent
+                solution[j] = agent.solution[j]
+        value = self.get_solutions_value(solution)
+        fitness = self.get_fitness(value)
+        if fitness > agent.fitness:
+            agent.solution = solution
+            agent.value = value
+            agent.fitness = fitness
 
-    def three_unique_agents(self, agent):
+    def unique_agents(self, index, n):
         """
         Get 3 agents that are unique from each other and 'agent' from the population.
 
-        :param agent:
+        :param index:
         :return: list of 3 agents
         """
-        agents = []
-        while len(agents) < 3:
-            i = np.random.randint(0, self.population.size)
-            x = self.population.individuals[i]
-            if x != agent and x not in agents:
-                agents += [x]
-        return agents
+        solutions = []
+        while len(solutions) < n:
+            i = np.random.randint(self.size)
+            if i != index and i not in solutions:
+                solutions += [i]
+        return solutions
 
 
 if __name__ == "__main__":
     benchmark = ComparativeBenchmarks.f1()
-    de = DifferentialEvolution(generations=100, crossover=0.8, mutate=0.6)
-    de.population = Population(size=100, dimensions=3, precision=6, domain=benchmark.domain, function=benchmark.function)
-    agent = de.evolve(min_value=benchmark.min_value, print_steps=True)
+    de = DifferentialEvolution( crossover=0.8, mutate=0.2, size=100, generations=100, dimensions=6,
+                                domain=benchmark.domain, precision=6, function=benchmark.function)
+    agent = de.evolve(min_value=None, print_steps=True)
     print("Best Solution: ", agent)

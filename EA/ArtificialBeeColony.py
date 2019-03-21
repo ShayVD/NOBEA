@@ -4,14 +4,21 @@ import numpy.random as random
 import copy
 
 
-class ArtificialBeeColony(object):
+class ArtificialBeeColony(Population):
 
-    def __init__(self, generations=100, limit=20, population=None):
+    def __init__(self, employees, limit, size, generations, dimensions, domain, precision, function):
+        """
+        Set class attributes
+
+        :param generations:
+        :param limit:
+        """
+        size = int(size+size % 2)
+        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
         self._generations = generations
         self._limit = limit
-        self._population = population
-        if self.population is not None:
-            self.population.size = int(self.population.size + self.population.size % 2)
+        self._employees = round(employees * self.size)
+        self._onlookers = self.size - self._employees
 
     @property
     def generations(self):
@@ -22,6 +29,18 @@ class ArtificialBeeColony(object):
         self._generations = generations
 
     @property
+    def employees(self):
+        return self._employees
+
+    @employees.setter
+    def employees(self, employees):
+        self._employees = round(employees * self.size)
+
+    @property
+    def onlookers(self):
+        return self._onlookers
+
+    @property
     def limit(self):
         return self._limit
 
@@ -29,120 +48,109 @@ class ArtificialBeeColony(object):
     def limit(self, limit):
         self._limit = limit
 
-    @property
-    def population(self):
-        return self._population
-
-    @population.setter
-    def population(self, population):
-        """
-        Set population object of the ABC.
-        If the population size is uneven then the size is increased by one to fix.
-
-        :param population:  Population object
-        """
-        if population is not None:
-            population.size = int(population.size + population.size % 2)
-        self._population = population
-
     def colonise(self, min_value=None, print_steps=True):
-        # Employed bees are half the colony size
-        employed = int(self.population.size / 2)
+        """
+        Run the ABC algorithm on the given population.
+
+        :param min_value:
+        :param print_steps:
+        :return:
+        """
         for generation in range(self.generations):
             # Employees phase
-            for e in range(self.population.size):
+            for e in range(self.employees):
                 self.send_employee(e)
             # Onlookers phase
             self.send_onlookers()
             # Scouts phase
-            self.send_scout()
+            self.send_scouts()
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.population.best_individual)
-            if min_value is not None:
-                if min_value < 0 and self.population.best_individual.value < min_value-(1*10**-self.population.precision):
-                    break
-                elif self.population.best_individual.value < min_value+(1*10**-self.population.precision):
-                    break
-        return self.population.best_individual
+                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
+            if min_value is not None and self.solution_precision(min_value):
+                break
+        return self.best_individual
 
-    def send_scout(self):
-        counters = []
-        for bee in self.population.individuals:
-            counters += [bee.counter]
-        index = counters.index(max(counters))
-        if counters[index] > self.limit:
-            bee = self.population.create_individual()
-            self.population.set_individuals_fitness(bee)
-            self.population.individuals[index] = bee
-            self.send_employee(index)
+    def send_employee(self, index, other_index=None):
+        """
+        Send a bee to a new food source.
+        If the source has more nectar then stay, and reset counter.
+        Otherwise return to previous source, and increase counter by one.
 
-    def send_onlookers(self):
-        probabilities = self.probabilities()
-        beta = 0
-        for o in range(self.population.size):
-            phi = random.random_sample()
-            beta += phi * max(probabilities)
-            beta %= max(probabilities)
-            index = self.select(beta)
-            self.send_employee(index)
-
-    def select(self, beta):
-        probabilities = self.probabilities()
-        for i in range(self.population.size):
-            if beta < probabilities[i]:
-                return i
-
-    def send_employee(self, index):
-        bee = self.population.individuals[index]
-        food_source = self.new_food_source(index)
-        nectar = self.population.get_solutions_fitness(food_source)
+        :param index:   int, index of the bee in the population list
+        """
+        bee = self.individuals[index]
+        if other_index is not None:
+            food_source = self.explore_food_source(other_index)
+        else:
+            food_source = self.explore_food_source(index)
+        nectar = self.get_solutions_fitness(food_source)
         if bee.fitness < nectar:
             bee.solution = food_source
-            bee.counter = 0
-            self.population.set_individuals_fitness(bee)
+            self.reset_counter(index)
+            self.set_fitness(index)
         else:
             bee.counter += 1
 
+    def send_onlookers(self):
+        for o in range(self.employees, self.onlookers):
+            # get best food sources
+            best_food_sources = self.best_food_sources()
+            # randomly pick one
+            employee_index = random.choice(best_food_sources)
+            # send onlooker to food source and evaluate
+            self.send_employee(o, employee_index)
+
+    def best_food_sources(self):
+        best = []
+        while not best:
+            probabilities = self.probabilities()
+            rand = random.random_sample()
+            for e in range(self.employees):
+                if probabilities[e] > rand:
+                    best += [e]
+        return best
+
+    def send_scouts(self):
+        """
+        Send bees to a new food source if they have gone over the limit.
+        """
+        max_index = 0
+        max_limit = self.individuals[0].counter
+        for i in range(1, self.size):
+            if self.individuals[i].counter > max_limit:
+                max_limit = self.individuals[i].counter
+                max_index = i
+        if max_limit > self.limit:
+            self.random_solution(max_index)
+            self.set_fitness(max_index)
+            self.reset_counter(max_index)
+
+    def reset_counter(self, index):
+        self.individuals[index].counter = 0
+
     def probabilities(self):
-        # Probabilities computed as Karaboga did in his implementation
-        fitnesses = []
-        for bee in self.population.individuals:
-            fitnesses += [bee.fitness]
-        max_fitness = max(fitnesses)
         probs = []
-        for f in fitnesses:
-            probs += [0.9 * f / max_fitness + 0.1]
+        max_fitness = max(self.individuals, key=lambda bee: bee.fitness)
+        for bee in self.individuals:
+            probs += [0.9 * bee.fitness / max_fitness + 0.1]
         return probs
 
-    def new_food_source(self, bee_index):
-        d = random.randint(0, self.population.dimensions)
-        phi = random.uniform(-1, 1)
+    def explore_food_source(self, bee_index):
+        d = random.randint(0, self.dimensions)
+        rand = random.uniform(-1, 1)
         other_bee_index = bee_index
         while bee_index == other_bee_index:
-            other_bee_index = random.randint(0, self.population.size)
-        bee = self.population.individuals[bee_index]
-        other_bee = self.population.individuals[other_bee_index]
-        food_source = copy.deepcopy(bee.solution)
-        food_source[d] = bee.solution[d] + phi * (bee.solution[d] - other_bee.solution[d])
+            other_bee_index = random.randint(0, self.size)
+        solution = self.individuals[bee_index].solution
+        other_solution = self.individuals[other_bee_index].solution
+        food_source = copy.deepcopy(solution)
+        food_source[d] = solution[d] + rand * (solution[d] - other_solution[d])
         return food_source
-
-    """TODO check if can use Vimal Nayak implementation
-        def probabilities(self):
-            probabilities = []
-            fitnesses = []
-            fitness_sum = 0
-            for bee in self.population.individuals:
-                fitnesses += [bee.fitness]
-                fitness_sum += bee.fitness
-            for fitness in fitnesses:
-                probabilities += [fitness/fitness_sum]
-            return probabilities"""
 
 
 if __name__ == "__main__":
     benchmark = ComparativeBenchmarks.f1()
-    population = Population(size=100, dimensions=3, precision=6, domain=benchmark.domain, function=benchmark.function)
-    abc = ArtificialBeeColony(generations=100, limit=20, population=population)
-
-    bee = abc.colonise(min_value=benchmark.min_value, print_steps=True)
+    abc = ArtificialBeeColony(employees=0.5, limit=100, size=20, generations=2500, dimensions=30,
+                              domain=benchmark.domain, precision=6, function=benchmark.function)
+    bee = abc.colonise(min_value=None, print_steps=True)
     print("Best Solution: ", bee)
