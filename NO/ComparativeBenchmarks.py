@@ -7,6 +7,7 @@ IEEE TRANSACTIONS ON EVOLUTIONARY COMPUTATION, VOL. 3, NO. 2, JULY 1999
 """
 from NO.Benchmark import Benchmark
 from numpy import random
+import numpy as np
 import math
 
 
@@ -230,7 +231,7 @@ class ComparativeBenchmarks(object):
         """
         Generalised Schwefel's Problem 2.26
         Domain: -500 -> 500
-        Minimum value: f(420.97) = 12569.5(30)/41898.3(100)
+        Minimum value: f(420.97) = -12569.5(30)/41898.3(100)
 
         :param domain:
         :param dimensions:
@@ -238,10 +239,11 @@ class ComparativeBenchmarks(object):
         """
         def function(x):
             sum = 0
-            for i in range(len(x)):
+            n = len(x)
+            for i in range(n):
                 sum += -x[i] * math.sin(math.sqrt(abs(x[i])))
             return sum
-        min_value = -(418.983 * dimensions)
+        min_value = -418.9829 * dimensions
         return Benchmark(function=function, domain=domain, dimensions=dimensions, min_value=min_value,
                          name="Generalised Schwefel's Problem 2.26")
 
@@ -278,13 +280,12 @@ class ComparativeBenchmarks(object):
         def function(x):
             sum = 0
             n = len(x)
+            a = 0
+            b = 0
             for i in range(n):
-                a = 0
-                b = 0
-                for i in range(n):
-                    a += x[i]**2
-                    b += math.cos(2*math.pi*x[i])
-                sum += -20*math.exp(-0.2*math.sqrt((1/n)*a)) - math.exp((1/n)*b) + 20 + math.e
+                a += x[i]**2
+                b += np.cos(2*np.pi*x[i])
+            sum = -20 * np.exp(-0.2 * ((1/n) * a ** 0.5)) - np.exp((1/n)*b) + 20 + np.e
             return sum
         return Benchmark(function=function, domain=domain, dimensions=dimensions, min_value=0, name="Ackley's Function")
 
@@ -577,5 +578,8 @@ class ComparativeBenchmarks(object):
 
 
 if __name__ == "__main__":
-    for function in ComparativeBenchmarks.benchmarks():
-        print(function.name)
+    i = 1
+    for func in ComparativeBenchmarks.benchmarks_any_dimension():
+        print("Func ", i)
+        print(func.function([420.9687]*30))
+        i += 1

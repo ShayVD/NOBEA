@@ -92,7 +92,7 @@ class ArtificialBeeColony(Population):
             bee.counter += 1
 
     def send_onlookers(self):
-        for o in range(self.employees, self.onlookers):
+        for o in range(self.employees, self.size):
             # get best food sources
             best_food_sources = self.best_food_sources()
             # randomly pick one
@@ -105,6 +105,7 @@ class ArtificialBeeColony(Population):
         while not best:
             probabilities = self.probabilities()
             rand = random.random_sample()
+            # TODO
             for e in range(self.employees):
                 if probabilities[e] > rand:
                     best += [e]
@@ -121,6 +122,7 @@ class ArtificialBeeColony(Population):
                 max_limit = self.individuals[i].counter
                 max_index = i
         if max_limit > self.limit:
+            print("hi")
             self.random_solution(max_index)
             self.set_fitness(max_index)
             self.reset_counter(max_index)
@@ -132,7 +134,7 @@ class ArtificialBeeColony(Population):
         probs = []
         max_fitness = max(self.individuals, key=lambda bee: bee.fitness)
         for bee in self.individuals:
-            probs += [0.9 * bee.fitness / max_fitness + 0.1]
+            probs += [0.9 * bee.fitness / max_fitness.fitness + 0.1]
         return probs
 
     def explore_food_source(self, bee_index):
@@ -140,17 +142,20 @@ class ArtificialBeeColony(Population):
         rand = random.uniform(-1, 1)
         other_bee_index = bee_index
         while bee_index == other_bee_index:
-            other_bee_index = random.randint(0, self.size)
+            # TODO
+            fs = self.best_food_sources()
+            other_bee_index = random.choice(fs)
+            #other_bee_index = random.randint(0, self.size)
         solution = self.individuals[bee_index].solution
         other_solution = self.individuals[other_bee_index].solution
         food_source = copy.deepcopy(solution)
-        food_source[d] = solution[d] + rand * (solution[d] - other_solution[d])
+        food_source[d] = self.bind(solution[d] + rand * (solution[d] - other_solution[d]))
         return food_source
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f1()
-    abc = ArtificialBeeColony(employees=0.5, limit=100, size=20, generations=2500, dimensions=30,
-                              domain=benchmark.domain, precision=6, function=benchmark.function)
-    bee = abc.colonise(min_value=None, print_steps=True)
+    benchmark = ComparativeBenchmarks.f5()
+    abc = ArtificialBeeColony(employees=0.5, limit=100, size=20, generations=3000, dimensions=benchmark.dimensions,
+                              domain=benchmark.domain, precision=2, function=benchmark.function)
+    bee = abc.colonise(min_value=benchmark.min_value, print_steps=True)
     print("Best Solution: ", bee)

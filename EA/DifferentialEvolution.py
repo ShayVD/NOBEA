@@ -114,8 +114,8 @@ class DifferentialEvolution(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f1()
-    de = DifferentialEvolution( crossover=0.8, mutate=0.2, size=100, generations=100, dimensions=6,
-                                domain=benchmark.domain, precision=6, function=benchmark.function)
+    benchmark = ComparativeBenchmarks.f3()
+    de = DifferentialEvolution(crossover=0.8, mutate=0.2, size=100, generations=1000000000, dimensions=30,
+                               domain=benchmark.domain, precision=6, function=benchmark.function)
     agent = de.evolve(min_value=None, print_steps=True)
     print("Best Solution: ", agent)

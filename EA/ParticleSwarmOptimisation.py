@@ -99,9 +99,9 @@ class ParticleSwarmOptimisation(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f2()
+    benchmark = ComparativeBenchmarks.f1()
     pso = ParticleSwarmOptimisation(inertia_weight=0.2, cognitive_constant=1.9, social_constant=1.9, size=100,
-                                    generations=500, dimensions=30, domain=benchmark.domain, precision=6,
-                                    function=benchmark.function)
+                                    generations=3000, dimensions=benchmark.dimensions, domain=benchmark.domain,
+                                    precision=2, function=benchmark.function)
     particle = pso.swarm(min_value=benchmark.min_value)
     print("Best Particle: ", particle)

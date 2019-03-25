@@ -14,6 +14,7 @@ class Population(ABC):
         self._precision = precision
         self._domain = domain
         self._function = function
+        self._evaluations = 0
         self._random_population()
 
     @property
@@ -68,6 +69,14 @@ class Population(ABC):
     def function(self):
         return self._function
 
+    @property
+    def evaluations(self):
+        return self._evaluations
+
+    @evaluations.setter
+    def evaluations(self, evaluations):
+        self._evaluations = evaluations
+
     def reset(self):
         self.__init__(self.size, self.dimensions, self.precision, self.domain, self.function)
 
@@ -75,10 +84,12 @@ class Population(ABC):
         for i in range(self.size):
             self.set_fitness(i)
 
-    def set_fitness(self, index):
-        ind = self.individuals[index]
+    def set_fitness(self, ind):
+        if isinstance(ind, int):
+            ind = self.individuals[ind]
         ind.value = self.get_solutions_value(ind.solution)
         ind.fitness = self.get_fitness(ind.value)
+        self.evaluations += 1
         if self.best_individual is None or ind.fitness > self.best_individual.fitness:
             self.best_individual = copy.deepcopy(ind)
 
@@ -120,7 +131,7 @@ class Population(ABC):
 
     def solution_precision(self, min_value):
         precision_met = False
-        if min_value < 0 and self.best_individual.value < min_value - (1 * 10 ** -self.precision):
+        if min_value < 0 and self.best_individual.value < min_value - (1 * 10 ** self.precision):
             precision_met = True
         elif self.best_individual.value < min_value + (1 * 10 ** -self.precision):
             precision_met = True

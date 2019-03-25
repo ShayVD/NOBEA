@@ -221,8 +221,8 @@ class GeneticAlgorithm(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f1()
-    ga = GeneticAlgorithm(crossovers=0.9, mutations=0.1, size=500, generations=100, dimensions=3,
-                          domain=benchmark.domain, precision=6, function=benchmark.function)
-    individual = ga.evolve(min_value=None, print_steps=True)
+    benchmark = ComparativeBenchmarks.f7()
+    ga = GeneticAlgorithm(crossovers=0.9, mutations=0.1, size=100, generations=100000000, dimensions=30,
+                          domain=benchmark.domain, precision=2, function=benchmark.function)
+    individual = ga.evolve(min_value=benchmark.min_value, print_steps=True)
     print(individual)
