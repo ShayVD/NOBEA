@@ -4,8 +4,16 @@ import numpy.random as random
 class Individual(object):
 
     def __init__(self, dimensions, domain):
-        self.dimensions = dimensions
-        self.domain = domain
+        """
+        Represents a candidate solution.
+        Holds solution, function value, fitness, best solution and best fitness.
+        Counter is for Artificial Bee Colony. Represents generations individual has had the same solution.
+
+        :param dimensions:
+        :param domain:
+        """
+        self._dimensions = dimensions
+        self._domain = domain
         self._solution = [None] * dimensions
         self._velocity = [None] * dimensions
         self.random_solution()
@@ -15,6 +23,22 @@ class Individual(object):
         self._best_fitness = None
         self._value = None
         self._counter = 0
+
+    @property
+    def dimensions(self):
+        return self._dimensions
+
+    @dimensions.setter
+    def dimensions(self, dimensions):
+        self._dimensions = dimensions
+
+    @property
+    def domain(self):
+        return self._domain
+
+    @domain.setter
+    def domain(self, domain):
+        self._domain = domain
 
     @property
     def solution(self):
@@ -73,10 +97,16 @@ class Individual(object):
         self._counter = counter
 
     def random_solution(self):
+        """
+        Randomise solution vector.
+        """
         for d in range(self.dimensions):
             self.solution[d] = random.uniform(self.domain[0], self.domain[1])
 
     def random_velocity(self):
+        """
+        Randomise velocity vector.
+        """
         for d in range(self.dimensions):
             self.velocity[d] = random.uniform(-abs(self.domain[1] - self.domain[0]), abs(self.domain[1] - self.domain[0]))
 

@@ -5,29 +5,18 @@ from numpy import random
 
 class ParticleSwarmOptimisation(Population):
 
-    def __init__(self, inertia_weight, cognitive_constant, social_constant, size, generations, dimensions, domain,
-                 precision, function):
+    def __init__(self, inertia_weight, cognitive_constant, social_constant, size, eval_limit, benchmark):
         """
-        Set class attributes.
+        Uses animal swarming techniques to approximate global optimum of benchmark function.
 
-        :param generations:         int, max iterations the algorithm should run for
         :param inertia_weight:      float, (0.0 -> 1.0)
         :param cognitive_constant:  int,
         :param social_constant:     int,
         """
-        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
-        self.generations = generations
-        self.inertia_weight = inertia_weight
-        self.cognitive_constant = cognitive_constant
-        self.social_constant = social_constant
-
-    @property
-    def generations(self):
-        return self._generations
-
-    @generations.setter
-    def generations(self, generations):
-        self._generations = generations
+        super().__init__(size=size, eval_limit=eval_limit, benchmark=benchmark)
+        self._inertia_weight = inertia_weight
+        self._cognitive_constant = cognitive_constant
+        self._social_constant = social_constant
 
     @property
     def inertia_weight(self):
@@ -53,28 +42,33 @@ class ParticleSwarmOptimisation(Population):
     def social_constant(self, social_constant):
         self._social_constant = social_constant
 
-    def swarm(self, min_value=None, print_steps=True):
+    def swarm(self, precision=None, print_steps=True):
         """
         Swarm the population on the best solution.
 
         :return:    Individual, particle that produces the best solution
         """
-        for generation in range(self.generations):
+        generation = 0
+        mins = []
+        while self.evaluations < self.eval_limit:
             for i in range(self.size):
                 self.update_velocity(i)
                 self.update_position(i)
                 self.set_fitness(i)
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
-            if min_value is not None and self.solution_precision(min_value):
+                print("Generation:", generation+1, "; Evaluations: ", self.evaluations,
+                      ";Solution:", self.best_individual)
+            if precision is not None and self.solution_precision(precision):
                 break
-        return self.best_individual
+            generation += 1
+            mins += [self.best_individual.value]
+        return self.best_individual, mins
 
     def update_velocity(self, index):
         """
         Update particle's velocity.
 
-        :param particle:    Individual, particle to update it's velocity
+        :param index:    particles index in population list
         """
         particle = self.individuals[index]
         v = []
@@ -91,7 +85,7 @@ class ParticleSwarmOptimisation(Population):
         """
         Update particle's position within the search space.
 
-        :param particle:    Individual, the particle to update it's position
+        :param index:    Individual, the particle to update it's position
         """
         particle = self.individuals[index]
         for d in range(self.dimensions):
@@ -99,9 +93,10 @@ class ParticleSwarmOptimisation(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f1()
-    pso = ParticleSwarmOptimisation(inertia_weight=0.2, cognitive_constant=1.9, social_constant=1.9, size=100,
-                                    generations=3000, dimensions=benchmark.dimensions, domain=benchmark.domain,
-                                    precision=2, function=benchmark.function)
-    particle = pso.swarm(min_value=benchmark.min_value)
+    benchmark = ComparativeBenchmarks.f2()
+    # benchmark.domain = [-10, 10]
+    # benchmark.dimensions = 10
+    pso = ParticleSwarmOptimisation(inertia_weight=0.6, cognitive_constant=1.8, social_constant=1.8, size=20,
+                                    eval_limit=100000, benchmark=benchmark)
+    particle, mins = pso.swarm(precision=None, print_steps=True)
     print("Best Particle: ", particle)

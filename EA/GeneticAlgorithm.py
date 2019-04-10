@@ -14,26 +14,16 @@ class GeneticAlgorithm(Population):
     When a satisfactory solution is found to the fitness function, or max generations is reached, the algorithm stops.
     """
 
-    def __init__(self, crossovers, mutations, size, generations, dimensions, domain, precision, function):
+    def __init__(self, crossovers, mutations, size, eval_limit, benchmark):
         """
-        Set class attributes.
+        Uses genetic copying, crossover, and mutation techniques to approximate global optimum to benchmark function.
 
-        :param generations:     int, max number of iterations the algorithm's to run for
         :param crossovers:      float, (0.0 -> 1.0) percentage of population to create new solutions
         :param mutations:       float, (0.0 -> 1.0) percentage of population to have their chromosomes altered
         """
-        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
-        self._generations = generations
+        super().__init__(size=size, eval_limit=eval_limit, benchmark=benchmark)
         self._crossovers = crossovers
         self._mutations = mutations
-
-    @property
-    def generations(self):
-        return self._generations
-
-    @generations.setter
-    def generations(self, generations):
-        self._generations = generations
 
     @property
     def crossovers(self):
@@ -51,15 +41,16 @@ class GeneticAlgorithm(Population):
     def mutations(self, mutations):
         self._mutations = mutations
 
-    def evolve(self, min_value=None, print_steps=True):
+    def evolve(self, precision=None, print_steps=True):
         """
         Evolve the population using copy, crossover, and mutate.
 
-        :param min_value:       float, algorithm terminates if solution with sufficient accuracy is found
         :param print_steps:     boolean, print solution for each generation if True
         :return:                individual, the best candidate solution found by the algorithm
         """
-        for generation in range(self.generations):
+        generation = 0
+        mins = []
+        while self.evaluations < self.eval_limit:
             new_population = []
             # Copy
             new_population += self.copy()
@@ -71,10 +62,13 @@ class GeneticAlgorithm(Population):
             self.individuals = new_population
             self.set_populations_fitness()
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
-            if min_value is not None and self.solution_precision(min_value):
+                print("Generation: ", generation+1, "; Evaluations: ", self.evaluations,
+                      ";Solution:", self.best_individual)
+            if precision is not None and self.solution_precision(precision):
                 break
-        return self.best_individual
+            generation += 1
+            mins += [self.best_individual.value]
+        return self.best_individual, mins
 
     def copy(self):
         """
@@ -221,8 +215,9 @@ class GeneticAlgorithm(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f7()
-    ga = GeneticAlgorithm(crossovers=0.9, mutations=0.1, size=100, generations=100000000, dimensions=30,
-                          domain=benchmark.domain, precision=2, function=benchmark.function)
-    individual = ga.evolve(min_value=benchmark.min_value, print_steps=True)
+    benchmark = ComparativeBenchmarks.f1()
+    # benchmark.domain = [-10, 10]
+    # benchmark.dimensions = 10
+    ga = GeneticAlgorithm(crossovers=0.9, mutations=0.1, size=100, eval_limit=100000, benchmark=benchmark)
+    individual, mins = ga.evolve(precision=3, print_steps=True)
     print(individual)

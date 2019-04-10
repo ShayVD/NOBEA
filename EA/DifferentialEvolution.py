@@ -14,26 +14,19 @@ class DifferentialEvolution(Population):
     When a satisfactory solution is found to the fitness function, or max iterations is reached, the algorithm stops.
     """
 
-    def __init__(self, crossover, mutate, size, generations, dimensions, domain, precision, function):
+    def __init__(self, crossover, mutate, size, eval_limit, benchmark):
         """
         Set class attributes.
 
-        :param generations:     int, amount of iterations the algorithm will run
-        :param crossover:       float, probability of crossover
-        :param mutate:          float, probability of mutation
+        :param crossover:
+        :param mutate:
+        :param size:
+        :param eval_limit:
+        :param benchmark:
         """
-        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
-        self._generations = generations
+        super().__init__(size=size, eval_limit=eval_limit, benchmark=benchmark)
         self._crossover = crossover
         self._mutate = mutate
-
-    @property
-    def generations(self):
-        return self._generations
-
-    @generations.setter
-    def generations(self, generations):
-        self._generations = generations
 
     @property
     def crossover(self):
@@ -51,28 +44,34 @@ class DifferentialEvolution(Population):
     def mutate(self, mutate):
         self._mutate = mutate
 
-    def evolve(self, min_value=None, print_steps=True):
+    def evolve(self, precision=None, print_steps=True):
         """
         Evolve the population.
 
+        :param precision:       precision of required solution
         :param print_steps:     boolean, prints best solution at each step
         :return:                individual, best individual after max iterations or required fitness
         """
-        for generation in range(self.generations):
+        generation = 0
+        mins = []
+        while self.evaluations < self.eval_limit:
             for i in range(self.size):
                 self.new_position(i)
             if print_steps:
-                print("Generation:", generation+1, "/", self.generations, ";Solution:", self.best_individual)
-            if min_value is not None and self.solution_precision(min_value):
+                print("Generation:", generation+1, "; Evaluations: ", self.evaluations, "; Solution: ",
+                      self.best_individual)
+            if precision is not None and self.solution_precision(precision):
                 break
-        return self.best_individual
+            mins += [self.best_individual.value]
+            generation += 1
+        return self.best_individual, mins
 
     def new_position(self, index):
         """
-        Create agent with new position, that will replace given agent if it's fitness is better.
+        Calculate a new position for the given agent. If the fitness is better then move to the new position.
+        Otherwise the agent stays where it is.
 
-        :param index:   individual, the individual that will be replaced if a better solution is found
-        :return:        individual
+        :param index:   agents index
         """
         agent = self.individuals[index]
         # Pick 3 unique solutions
@@ -86,7 +85,7 @@ class DifferentialEvolution(Population):
         solution = [None] * self.dimensions
         for j in range(self.dimensions):
             # For each gene pick a uniformly distributed random number
-            ri = round(np.random.random_sample(), 2)
+            ri = np.random.random_sample()
             if ri < self.crossover or j == R:
                 solution[j] = self.bind(a[j] + self.mutate * (b[j] - c[j]))
             else:
@@ -95,15 +94,15 @@ class DifferentialEvolution(Population):
         fitness = self.get_fitness(value)
         if fitness > agent.fitness:
             agent.solution = solution
-            agent.value = value
-            agent.fitness = fitness
+            self.set_fitness(agent, value, fitness)
 
     def unique_agents(self, index, n):
         """
-        Get 3 agents that are unique from each other and 'agent' from the population.
+        Get n agents index from the population that are unique from each other and the given index.
 
-        :param index:
-        :return: list of 3 agents
+        :param index:   agents index
+        :param n:       the number of index required
+        :return:        list of index
         """
         solutions = []
         while len(solutions) < n:
@@ -114,8 +113,9 @@ class DifferentialEvolution(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f3()
-    de = DifferentialEvolution(crossover=0.8, mutate=0.2, size=100, generations=1000000000, dimensions=30,
-                               domain=benchmark.domain, precision=6, function=benchmark.function)
-    agent = de.evolve(min_value=None, print_steps=True)
+    benchmark = ComparativeBenchmarks.f1()
+    # benchmark.domain = [-10, 10]
+    # benchmark.dimensions = 10
+    de = DifferentialEvolution(crossover=0.8, mutate=0.2, size=100, eval_limit=100000, benchmark=benchmark)
+    agent, mins = de.evolve(precision=None, print_steps=True)
     print("Best Solution: ", agent)

@@ -6,24 +6,38 @@ import copy
 
 class SimulatedAnnealing(Population):
 
-    def __init__(self, Tmax, Tmin, cool_rate, max_steps, size, dimensions, domain, precision, function):
+    def __init__(self, max_temp, cool_rate, eval_limit, benchmark):
         """
+        Uses metal annealing techniques to approximate global optimum of benchmark function.
 
-        :param max_steps:
+        :param max_temp:
+        :param cool_rate:
+        :param eval_limit:
+        :param benchmark:
         """
-        super().__init__(size=size, dimensions=dimensions, precision=precision, domain=domain, function=function)
-        self._max_steps = max_steps
-        self.Tmax = Tmax
-        self.Tmin = Tmin
-        self.cool_rate = cool_rate
-        self.T = None
-        self.step = 0
+        super().__init__(size=1,eval_limit=eval_limit, benchmark=benchmark)
+        self._max_temp = max_temp
+        self._cool_rate = cool_rate
+        self._temp = None
+        self._step = 0
 
     @property
-    def max_steps(self):
-        return self._max_steps
+    def max_temp(self):
+        return self._max_temp
 
-    def annealing(self, min_value=None, print_steps=True):
+    @max_temp.setter
+    def max_temp(self, max_temp):
+        self._max_temp = max_temp
+
+    @property
+    def cool_rate(self):
+        return self._cool_rate
+
+    @cool_rate.setter
+    def cool_rate(self, cool_rate):
+        self._cool_rate = cool_rate
+
+    def annealing(self, precision=None, print_steps=True):
         """
         Run the simulated annealing algorithm.
         Temperature goes down each step.
@@ -31,19 +45,24 @@ class SimulatedAnnealing(Population):
         :param print_steps: bool, if True print state at each step
         :return:
         """
-        if self.Tmax is None:
+        if self.max_temp is None:
             self.get_max_temp()
         state = self.individuals[0]
-        self.T = self.Tmax
-        while self.T > self.Tmin:
+        self._temp = self.max_temp
+        generation = 0
+        mins = []
+        while self.evaluations < self.eval_limit:
             equilibrium = False
             while not equilibrium:
-            #for i in range(5):
                 solution = self.get_neighbour(state.solution)
                 value = self.get_solutions_value(solution)
                 fitness = self.get_fitness(value)
-                if self.acceptance_probability(state.value, value, self.T) > np.random.random():
+                if self.acceptance_probability(state.value, value, self._temp) > np.random.random():
                     equilibrium = True
+                if self.evaluations % 100 == 0:
+                    mins += [self.best_individual.value]
+                if self.evaluations > self.eval_limit:
+                    break
             state.solution = solution
             state.value = value
             state.fitness = fitness
@@ -51,13 +70,21 @@ class SimulatedAnnealing(Population):
             if state.fitness > self.best_individual.fitness:
                 self.best_individual = copy.deepcopy(state)
             if print_steps:
-                print("Step ", self.step, "; Temperature: ", self.T, "; ", state)
-            if min_value is not None and self.solution_precision(min_value):
+                print("Generation ", generation, "; Evaluations: ", self.evaluations,
+                      "; Temperature: ", self._temp, "; ", state)
+            if precision is not None and self.solution_precision(precision):
                 break
-        return self.best_individual
+            generation += 1
+        return self.best_individual, mins
 
     def get_neighbour(self, sol):
-        std_dev = min(np.sqrt(self.T), (self.domain[1]-self.domain[0])/3/self.cool_rate)
+        """
+        Neighbouring solution to the one provided is calculated.
+
+        :param sol: candidate solution vector
+        :return:
+        """
+        std_dev = min(np.sqrt(self._temp), (self.domain[1]-self.domain[0])/3/self.cool_rate)
         solution = [None] * self.dimensions
         for i in range(self.dimensions):
             #rand = np.random.uniform(-np.pi/2, np.pi/2)
@@ -66,24 +93,22 @@ class SimulatedAnnealing(Population):
         return solution
 
     def update_temperature(self):
-        self.step += 1
+        """
+        Temperature is cooled.
+        """
+        self._step += 1
         # Would take a very long time
         # self.T = self.Tmax / np.log(self.k+1)
-        self.T = self.Tmax / (1 + self.step)
+        # if self._temp <= 0.001:
+        #    self._temp = 0.001
+        #else:
+        self._temp = self.max_temp / (1 + self._step)
 
     def get_max_temp(self):
-        max_val = None
-        min_val = None
-        for i in range(50):
-            state = self.create_individual()
-            state.value = self.get_solutions_value(state.solution)
-            state.fitness = self.get_fitness(state.value)
-            if max_val is None or state.value > max_val:
-                max_val = state.value
-            if min_val is None or state.value < min_val:
-                min_val = state.value
-                self.best_individual = state
-        self.Tmax = (max_val-min_val) * 1.5
+        """
+        Initial temperature is set to double the upper boundary.
+        """
+        self.max_temp = self.domain[1] * 2
 
     @staticmethod
     def acceptance_probability(cost, new_cost, temperature):
@@ -103,8 +128,10 @@ class SimulatedAnnealing(Population):
 
 
 if __name__ == "__main__":
-    benchmark = ComparativeBenchmarks.f17()
-    sa = SimulatedAnnealing(Tmax=None, Tmin=0.1, cool_rate=0.5, max_steps=1000, size=1, dimensions=benchmark.dimensions, precision=2,
-                            domain=benchmark.domain, function=benchmark.function)
-    state = sa.annealing(print_steps=True, min_value=benchmark.min_value)
-    print("State: ", state)
+    benchmark = ComparativeBenchmarks.f1()
+    # benchmark.domain = [-10, 10]
+    # benchmark.dimensions = 10
+    sa = SimulatedAnnealing(max_temp=None, cool_rate=0.5, eval_limit=1000000, benchmark=benchmark)
+    state, mins = sa.annealing(precision=2, print_steps=True)
+    print("State: fitness=", state.fitness, "; value=", state.value)
+

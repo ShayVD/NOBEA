@@ -3,6 +3,16 @@
 class Benchmark(object):
 
     def __init__(self, function, domain, dimensions, min_value, name):
+        """
+        Represents numerical optimisation benchmark function.
+        Also holds benchmarks domain, dimensions, minimum value, and name.
+
+        :param function:
+        :param domain:
+        :param dimensions:
+        :param min_value:
+        :param name:
+        """
         self._function = function
         self._domain = domain
         self._dimensions = dimensions
